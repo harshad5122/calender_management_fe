@@ -25,6 +25,10 @@ const CalendarComponent = (props) => {
   const [date, setDate] = useState(() => new Date());
   const [errorList, setErrorList] = useState([]);
   const [editingSlot, setEditingSlot] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [slotToDelete, setSlotToDelete] = useState(null);
+  const [currentYear, setCurrentYear] = useState(date.getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(date.getMonth() + 1);
 
   const {
     addAvailabilityAPI,
@@ -41,6 +45,13 @@ const CalendarComponent = (props) => {
     endTime: "",
     status: "Available",
   });
+  const getTodayDateString = () => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
 
   const fetchSlots = async (y, m) => {
     console.log("Fetching slots for:", y, m);
@@ -107,6 +118,10 @@ const CalendarComponent = (props) => {
 
   const closeErrorDialog = () => {
     setErrorList([]);
+    setDialogOpen(false);
+    const fetchYear = year || date.getFullYear();
+    const fetchMonth = month || date.getMonth() + 1;
+    fetchSlots(fetchYear, fetchMonth);
   };
 
   const fetchSlotsByDateRange = async (startDate, endDate, userId) => {
@@ -138,6 +153,8 @@ const CalendarComponent = (props) => {
 
   const handleNavigate = (newDate, view) => {
     setDate(newDate);
+    setCurrentYear(newDate.getFullYear());
+    setCurrentMonth(newDate.getMonth() + 1);
     if (view === Views.WEEK) {
       const weekStart = startOfWeek(newDate);
       const weekEnd = endOfWeek(newDate);
@@ -211,17 +228,15 @@ const CalendarComponent = (props) => {
   };
 
   const deleteSlot = async (slotId) => {
-    if (window.confirm("Are you sure you want to delete this slot?")) {
-      try {
-        await deleteAvailabilityAPI(slotId);
-        toast.success("Time slot deleted successfully.");
-        setDialogOpen(false);
-        setEditingSlot(null);
-        const now = new Date();
-        fetchSlots(now.getFullYear(), now.getMonth() + 1);
-      } catch (error) {
-        toast.error("Failed to delete time slot.");
-      }
+    try {
+      await deleteAvailabilityAPI(slotId);
+      toast.success("Time slot deleted successfully.");
+      setDialogOpen(false);
+      setEditingSlot(null);
+      const now = new Date();
+      fetchSlots(currentYear, currentMonth);
+    } catch (error) {
+      toast.error("Failed to delete time slot.");
     }
   };
 
@@ -259,7 +274,8 @@ const CalendarComponent = (props) => {
                 <button
                   type="button"
                   onClick={() => {
-                    deleteSlot(editingSlot.id);
+                    setSlotToDelete(editingSlot.id);
+                    setShowDeleteConfirm(true);
                   }}
                   className="text-red-600 hover:text-red-800"
                   aria-label="Delete availability slot"
@@ -282,6 +298,7 @@ const CalendarComponent = (props) => {
                     editingSlot ? "cursor-not-allowed" : ""
                   }`}
                   disabled={editingSlot !== null}
+                  min={getTodayDateString()}
                 />
               </div>
               <div>
@@ -296,6 +313,7 @@ const CalendarComponent = (props) => {
                     editingSlot ? "cursor-not-allowed" : ""
                   }`}
                   disabled={editingSlot !== null}
+                  min={formData.fromDate || getTodayDateString()}
                 />
               </div>
               <div>
@@ -349,6 +367,37 @@ const CalendarComponent = (props) => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded shadow-lg w-80">
+            <h4 className="mb-4 font-semibold">Confirm Delete</h4>
+            <p className="mb-4">
+              Are you sure you want to delete this time slot?
+            </p>
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setSlotToDelete(null);
+                }}
+                className="px-4 py-2 border rounded"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  deleteSlot(slotToDelete);
+                  setShowDeleteConfirm(false);
+                  setSlotToDelete(null);
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}
