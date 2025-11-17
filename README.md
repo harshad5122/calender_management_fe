@@ -9,8 +9,6 @@ A web application to manage and view user availability slots using [react-big-ca
 ```bash
 git clone <repository-url>
 cd <PROJECT_NAME>
-npm install
-npm run start
 ```
 
 ### 2. Install Dependencies
